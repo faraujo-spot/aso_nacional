@@ -78,7 +78,7 @@ tr:last-child td{border-bottom:none}
   <div class="hdr-top">
     <div>
       <div class="hdr-title">ASO | Nacional</div>
-      <div class="hdr-sub">Controle de vencimento do ASO periódico — gerado em 09/09/2026 16:08</div>
+      <div class="hdr-sub">Controle de vencimento do ASO periódico — gerado em 09/09/2026 16:18</div>
     </div>
   </div>
   <div class="nav-tabs">
@@ -88,6 +88,13 @@ tr:last-child td{border-bottom:none}
 </div>
 
 <div class="page active" id="pageResumo">
+  <div class="cards-grid">
+    <div class="card"><div class="card-accent acc-rd"></div><div class="card-lbl">Vencido</div><div class="card-num" id="cardVencido">0</div></div>
+    <div class="card"><div class="card-accent acc-or"></div><div class="card-lbl">A vencer</div><div class="card-num" id="cardAVencer">0</div></div>
+    <div class="card"><div class="card-accent acc-gr"></div><div class="card-lbl">Em dia</div><div class="card-num" id="cardEmDia">0</div></div>
+    <div class="card"><div class="card-accent acc-dk"></div><div class="card-lbl">Total ativos</div><div class="card-num" id="cardTotal">0</div></div>
+  </div>
+
   <div class="two-col">
     <div class="chart-box">
       <div class="sec-ttl">Por Job</div>
@@ -107,13 +114,6 @@ tr:last-child td{border-bottom:none}
 </div>
 
 <div class="page" id="pageDetalhe">
-  <div class="cards-grid">
-    <div class="card"><div class="card-accent acc-rd"></div><div class="card-lbl">Vencido</div><div class="card-num" id="cardVencido">0</div></div>
-    <div class="card"><div class="card-accent acc-or"></div><div class="card-lbl">A vencer</div><div class="card-num" id="cardAVencer">0</div></div>
-    <div class="card"><div class="card-accent acc-gr"></div><div class="card-lbl">Em dia</div><div class="card-num" id="cardEmDia">0</div></div>
-    <div class="card"><div class="card-accent acc-dk"></div><div class="card-lbl">Total ativos</div><div class="card-num" id="cardTotal">0</div></div>
-  </div>
-
   <div class="filt-box">
     <div class="filt-row">
       <div class="fg"><label>Status</label>
@@ -459,9 +459,28 @@ tr:last-child td{border-bottom:none}
       totalGeral.vencido += l.vencido; totalGeral.a_vencer += l.a_vencer;
       totalGeral.em_dia += l.em_dia; totalGeral.total += l.total;
     });
-    var atencaoGeral = totalGeral.total ? Math.round((totalGeral.vencido + totalGeral.a_vencer) / totalGeral.total * 100) : 0;
+    // "% Atenção" da linha Total = (vencido+a_vencer) somados de todos os grupos, sobre o total
+    // geral somado — antes ficava sem essa conta e aparecia "undefined%" na tela.
+    totalGeral.atencao = totalGeral.total ? Math.round((totalGeral.vencido + totalGeral.a_vencer) / totalGeral.total * 100) : 0;
 
-    function linhaHtml(chave, l, negrito){
+    // Farol de cor relativo aos valores desta tabela: maior % atenção = vermelho, menor = verde,
+    // meio-termo = âmbar — interpola entre as 3 cores conforme a posição de cada linha no
+    // intervalo [mínimo, máximo] observado (não são faixas fixas, se adapta aos dados de hoje).
+    var valores = linhas.map(function(l){ return l.atencao; });
+    var min = Math.min.apply(null, valores);
+    var max = Math.max.apply(null, valores);
+
+    function interpolar(c1, c2, t){
+      return c1.map(function(v, i){ return Math.round(v + (c2[i] - v) * t); }).join(",");
+    }
+    function corFarol(valor){
+      if (max === min) return "#1a2340";
+      var t = Math.max(0, Math.min(1, (valor - min) / (max - min)));
+      var VERDE = [30,107,58], AMBAR = [184,110,10], VERMELHO = [168,40,40];
+      return "rgb(" + (t < 0.5 ? interpolar(VERDE, AMBAR, t / 0.5) : interpolar(AMBAR, VERMELHO, (t - 0.5) / 0.5)) + ")";
+    }
+
+    function linhaHtml(chave, l, negrito, cor){
       var estilo = negrito ? ' style="font-weight:700"' : '';
       return '<tr' + estilo + '>' +
         '<td>' + chave + '</td>' +
@@ -469,12 +488,12 @@ tr:last-child td{border-bottom:none}
         '<td class="c">' + formatarNumeroBR(l.a_vencer) + '</td>' +
         '<td class="c">' + formatarNumeroBR(l.em_dia) + '</td>' +
         '<td class="c">' + formatarNumeroBR(l.total) + '</td>' +
-        '<td class="c">' + l.atencao + '%</td>' +
+        '<td class="c" style="color:' + cor + ';font-weight:700">' + l.atencao + '%</td>' +
       '</tr>';
     }
 
-    var html = linhas.map(function(l){ return linhaHtml(l.chave, l, false); }).join("");
-    html += linhaHtml("Total", totalGeral, true);
+    var html = linhas.map(function(l){ return linhaHtml(l.chave, l, false, corFarol(l.atencao)); }).join("");
+    html += linhaHtml("Total", totalGeral, true, "#1a2340");
     document.getElementById(tbodyId).innerHTML = html;
   }
 
