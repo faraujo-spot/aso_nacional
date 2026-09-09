@@ -64,7 +64,7 @@ tr:last-child td{border-bottom:none}
   <div class="hdr-top">
     <div>
       <div class="hdr-title">ASO | Nacional</div>
-      <div class="hdr-sub">Controle de vencimento do ASO periódico — gerado em 09/09/2026 12:04</div>
+      <div class="hdr-sub">Controle de vencimento do ASO periódico — gerado em 09/09/2026 12:06</div>
     </div>
   </div>
 </div>
@@ -103,7 +103,7 @@ tr:last-child td{border-bottom:none}
       <thead>
         <tr>
           <th>Nome</th><th>CPF</th><th>UF</th><th>Cargo</th><th>Empresa</th><th>Job</th>
-          <th>Dias no vínculo</th><th>Último ASO</th><th>Vencimento</th><th>Status</th><th>Ação</th>
+          <th>Dias no vínculo</th><th>Último ASO</th><th>Vencimento</th><th>Status</th><th>Data do exame</th>
         </tr>
       </thead>
       <tbody id="tbody"></tbody>
@@ -219,7 +219,7 @@ tr:last-child td{border-bottom:none}
     return (
       '<div class="marc-row">' +
         '<input type="date" id="data_' + d.CPF + '">' +
-        '<button class="btn-marcar" onclick="window.__marcarAso(\'' + d.CPF + '\')">ASO feito</button>' +
+        '<button class="btn-marcar" onclick="window.__marcarAso(\'' + d.CPF + '\')">Confirmar</button>' +
       '</div>'
     );
   }
