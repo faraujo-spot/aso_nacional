@@ -64,7 +64,7 @@ tr:last-child td{border-bottom:none}
   <div class="hdr-top">
     <div>
       <div class="hdr-title">ASO | Nacional</div>
-      <div class="hdr-sub">Controle de vencimento do ASO periódico — gerado em 09/09/2026 11:36</div>
+      <div class="hdr-sub">Controle de vencimento do ASO periódico — gerado em 09/09/2026 11:49</div>
     </div>
   </div>
 </div>
@@ -89,6 +89,7 @@ tr:last-child td{border-bottom:none}
       </div>
       <div class="fg"><label>UF</label><select id="fUF"><option value="TODOS">Todas</option></select></div>
       <div class="fg"><label>Empresa</label><select id="fEmpresa"><option value="TODOS">Todas</option></select></div>
+      <div class="fg"><label>Job</label><select id="fJob"><option value="TODOS">Todos</option></select></div>
       <div class="fg"><label>Buscar (nome ou CPF)</label><input type="text" id="fBusca" placeholder="digite pra buscar"></div>
       <button class="btn-clear" id="btnClear">Limpar filtros</button>
     </div>
@@ -154,9 +155,11 @@ tr:last-child td{border-bottom:none}
   function initFiltros(){
     var ufs = Array.from(new Set(DADOS.map(function(d){ return d.UF; }).filter(Boolean))).sort();
     var empresas = Array.from(new Set(DADOS.map(function(d){ return d.Empresa; }).filter(Boolean))).sort();
+    var jobs = Array.from(new Set(DADOS.map(function(d){ return d.Job; }).filter(Boolean))).sort();
     populateSelect("fUF", ufs);
     populateSelect("fEmpresa", empresas);
-    ["fStatus","fUF","fEmpresa"].forEach(function(id){
+    populateSelect("fJob", jobs);
+    ["fStatus","fUF","fEmpresa","fJob"].forEach(function(id){
       document.getElementById(id).addEventListener("change", render);
     });
     document.getElementById("fBusca").addEventListener("input", render);
@@ -164,6 +167,7 @@ tr:last-child td{border-bottom:none}
       document.getElementById("fStatus").value = "TODOS";
       document.getElementById("fUF").value = "TODOS";
       document.getElementById("fEmpresa").value = "TODOS";
+      document.getElementById("fJob").value = "TODOS";
       document.getElementById("fBusca").value = "";
       render();
     });
@@ -173,11 +177,13 @@ tr:last-child td{border-bottom:none}
     var st = document.getElementById("fStatus").value;
     var uf = document.getElementById("fUF").value;
     var emp = document.getElementById("fEmpresa").value;
+    var job = document.getElementById("fJob").value;
     var busca = document.getElementById("fBusca").value.trim().toUpperCase();
     return DADOS.filter(function(d){
       if (st !== "TODOS" && d.Status !== st) return false;
       if (uf !== "TODOS" && d.UF !== uf) return false;
       if (emp !== "TODOS" && d.Empresa !== emp) return false;
+      if (job !== "TODOS" && d.Job !== job) return false;
       if (busca && d.Nome.toUpperCase().indexOf(busca) === -1 && String(d.CPF).indexOf(busca) === -1) return false;
       return true;
     });
