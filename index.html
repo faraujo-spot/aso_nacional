@@ -56,8 +56,6 @@ tr:last-child td{border-bottom:none}
 .marc-row input[type=date]{border:1px solid #dce3ef;border-radius:5px;padding:3px 5px;font-size:10px;font-family:'Inter',sans-serif}
 .tag-ok{font-size:10px;color:#1e6b3a;font-weight:700}
 .tag-pend{font-size:10px;color:#7a8aaa}
-.link-remover{font-size:9px;color:#a82828;text-decoration:underline}
-.link-remover:hover{color:#7a1c1c}
 
 .toast{position:fixed;bottom:18px;right:18px;background:#1a2340;color:#fff;padding:10px 16px;border-radius:8px;font-size:12px;box-shadow:0 6px 18px rgba(0,0,0,.25);display:none;z-index:50;max-width:320px}
 .toast.show{display:block}
@@ -70,7 +68,7 @@ tr:last-child td{border-bottom:none}
   <div class="hdr-top">
     <div>
       <div class="hdr-title">ASO | Nacional</div>
-      <div class="hdr-sub">Controle de vencimento do ASO periódico — gerado em 09/09/2026 15:23</div>
+      <div class="hdr-sub">Controle de vencimento do ASO periódico — gerado em 09/09/2026 15:38</div>
     </div>
   </div>
 </div>
@@ -228,10 +226,7 @@ tr:last-child td{border-bottom:none}
   function linhaAcao(d){
     var jaMarcadoAgora = marcadosNestaSessao[d.CPF];
     if (jaMarcadoAgora){
-      return (
-        '<span class="tag-ok">&#10003; Registrado (' + jaMarcadoAgora + ')</span> ' +
-        '<a href="javascript:void(0)" class="link-remover" onclick="window.__removerAso(\'' + d.CPF + '\')">remover</a>'
-      );
+      return '<span class="tag-ok">&#10003; Registrado (' + jaMarcadoAgora + ')</span>';
     }
     return (
       '<div class="marc-row">' +
@@ -313,7 +308,20 @@ tr:last-child td{border-bottom:none}
     document.getElementById("cntBadge").textContent = formatarNumeroBR(linhas.length) + " registro(s)";
   }
 
-  function sincronizarSemVerificar(payload){
+  function marcarAso(cpf){
+    var dado = DADOS.filter(function(d){ return String(d.CPF) === String(cpf); })[0];
+    if (!dado) return;
+    var input = document.getElementById("data_" + cpf);
+    var dataExame = input ? input.value : "";
+    if (!dataExame){ showToast("Escolha uma data antes de marcar como feito.", true); return; }
+
+    if (!SYNC_URL || SYNC_URL.indexOf("COLE_AQUI") === 0){
+      showToast("Sincronização ainda não configurada (SYNC_URL). Avise o responsável pelo painel.", true);
+      return;
+    }
+
+    var payload = { cpf: String(cpf), nome: dado.Nome, data_exame: dataExame };
+    var iframe = document.getElementById("syncFrame");
     var form = document.createElement("form");
     form.method = "POST";
     form.action = SYNC_URL;
@@ -327,45 +335,12 @@ tr:last-child td{border-bottom:none}
     document.body.appendChild(form);
     form.submit();
     document.body.removeChild(form);
-  }
-
-  function marcarAso(cpf){
-    var dado = DADOS.filter(function(d){ return String(d.CPF) === String(cpf); })[0];
-    if (!dado) return;
-    var input = document.getElementById("data_" + cpf);
-    var dataExame = input ? input.value : "";
-    if (!dataExame){ showToast("Escolha uma data antes de marcar como feito.", true); return; }
-
-    if (!SYNC_URL || SYNC_URL.indexOf("COLE_AQUI") === 0){
-      showToast("Sincronização ainda não configurada (SYNC_URL). Avise o responsável pelo painel.", true);
-      return;
-    }
-
-    sincronizarSemVerificar({ cpf: String(cpf), nome: dado.Nome, data_exame: dataExame });
 
     marcadosNestaSessao[cpf] = dataExame.split("-").reverse().join("/");
     render();
     showToast("ASO de " + dado.Nome + " registrado. O status no painel atualiza no próximo processamento diário.");
   }
   window.__marcarAso = marcarAso;
-
-  function removerAso(cpf){
-    var dado = DADOS.filter(function(d){ return String(d.CPF) === String(cpf); })[0];
-    var nome = dado ? dado.Nome : cpf;
-    if (!confirm("Remover o registro de ASO feito de " + nome + "? Isso não pode ser desfeito pelo painel.")) return;
-
-    if (!SYNC_URL || SYNC_URL.indexOf("COLE_AQUI") === 0){
-      showToast("Sincronização ainda não configurada (SYNC_URL). Avise o responsável pelo painel.", true);
-      return;
-    }
-
-    sincronizarSemVerificar({ cpf: String(cpf), acao: "remover" });
-
-    delete marcadosNestaSessao[cpf];
-    render();
-    showToast("Registro de " + nome + " removido. O status volta ao cálculo automático no próximo processamento diário.");
-  }
-  window.__removerAso = removerAso;
 
   function parseCsvGeneric(text){
     // Parser respeitando aspas (campo com vírgula, ex: nome "SOUZA, MARIA", vem entre aspas no
