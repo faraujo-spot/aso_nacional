@@ -11,7 +11,17 @@ body{font-family:'Inter',sans-serif;background:#eef0f3;color:#1a2340;font-size:1
 .hdr-top{display:flex;align-items:center;justify-content:space-between}
 .hdr-title{color:#fff;font-size:19px;font-weight:700}
 .hdr-sub{color:#8fa4c8;font-size:11px;margin-top:2px}
-.page{padding:14px 22px 48px}
+.nav-tabs{display:flex;margin-top:10px}
+.nav-tab{background:none;border:none;color:#8fa4c8;padding:8px 16px;font-size:12px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;font-family:'Inter',sans-serif;transition:all .2s}
+.nav-tab:hover{color:#c9d8f0}
+.nav-tab.active{color:#fff;border-bottom-color:#fff}
+.page{padding:14px 22px 48px;display:none}
+.page.active{display:block}
+
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chart-box{background:#fff;border:1px solid #e4e9f2;border-radius:8px;padding:10px 12px 8px}
+.sec-ttl{font-size:9px;font-weight:700;color:#5a6a8a;text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px}
+th.c,td.c{text-align:center}
 
 .cards-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:12px}
 .card{background:#fff;border-radius:8px;padding:11px 12px 9px;border:1px solid #e4e9f2}
@@ -68,12 +78,35 @@ tr:last-child td{border-bottom:none}
   <div class="hdr-top">
     <div>
       <div class="hdr-title">ASO | Nacional</div>
-      <div class="hdr-sub">Controle de vencimento do ASO periódico — gerado em 09/09/2026 15:38</div>
+      <div class="hdr-sub">Controle de vencimento do ASO periódico — gerado em 09/09/2026 16:08</div>
+    </div>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-page="pageResumo">Resumo</button>
+    <button class="nav-tab" data-page="pageDetalhe">Detalhe</button>
+  </div>
+</div>
+
+<div class="page active" id="pageResumo">
+  <div class="two-col">
+    <div class="chart-box">
+      <div class="sec-ttl">Por Job</div>
+      <table>
+        <thead><tr><th>Job</th><th class="c">Vencido</th><th class="c">A vencer</th><th class="c">Em dia</th><th class="c">Total</th><th class="c">% Atenção</th></tr></thead>
+        <tbody id="tbodyResumoJob"></tbody>
+      </table>
+    </div>
+    <div class="chart-box">
+      <div class="sec-ttl">Por UF</div>
+      <table>
+        <thead><tr><th>UF</th><th class="c">Vencido</th><th class="c">A vencer</th><th class="c">Em dia</th><th class="c">Total</th><th class="c">% Atenção</th></tr></thead>
+        <tbody id="tbodyResumoUF"></tbody>
+      </table>
     </div>
   </div>
 </div>
 
-<div class="page">
+<div class="page" id="pageDetalhe">
   <div class="cards-grid">
     <div class="card"><div class="card-accent acc-rd"></div><div class="card-lbl">Vencido</div><div class="card-num" id="cardVencido">0</div></div>
     <div class="card"><div class="card-accent acc-or"></div><div class="card-lbl">A vencer</div><div class="card-num" id="cardAVencer">0</div></div>
@@ -388,10 +421,74 @@ tr:last-child td{border-bottom:none}
       .catch(function(){ /* silencioso — painel continua funcionando com o snapshot local */ });
   }
 
+  function initTabs(){
+    document.querySelectorAll('.nav-tab').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        document.querySelectorAll('.nav-tab').forEach(function(b){ b.classList.remove('active'); });
+        document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+        btn.classList.add('active');
+        document.getElementById(btn.getAttribute('data-page')).classList.add('active');
+      });
+    });
+  }
+
+  function contarPorGrupo(campo){
+    var grupos = {};
+    DADOS.forEach(function(d){
+      var chave = d[campo] || "—";
+      if (!grupos[chave]) grupos[chave] = {vencido:0, a_vencer:0, em_dia:0};
+      grupos[chave][d.Status]++;
+    });
+    return grupos;
+  }
+
+  function renderResumoTabela(tbodyId, grupos, ordenarPorAtencao){
+    var linhas = Object.keys(grupos).map(function(chave){
+      var g = grupos[chave];
+      var total = g.vencido + g.a_vencer + g.em_dia;
+      var atencao = total ? Math.round((g.vencido + g.a_vencer) / total * 100) : 0;
+      return {chave: chave, vencido: g.vencido, a_vencer: g.a_vencer, em_dia: g.em_dia, total: total, atencao: atencao};
+    });
+    linhas.sort(ordenarPorAtencao
+      ? function(a, b){ return b.atencao - a.atencao; }
+      : function(a, b){ return a.chave.localeCompare(b.chave, "pt-BR"); }
+    );
+
+    var totalGeral = {vencido:0, a_vencer:0, em_dia:0, total:0};
+    linhas.forEach(function(l){
+      totalGeral.vencido += l.vencido; totalGeral.a_vencer += l.a_vencer;
+      totalGeral.em_dia += l.em_dia; totalGeral.total += l.total;
+    });
+    var atencaoGeral = totalGeral.total ? Math.round((totalGeral.vencido + totalGeral.a_vencer) / totalGeral.total * 100) : 0;
+
+    function linhaHtml(chave, l, negrito){
+      var estilo = negrito ? ' style="font-weight:700"' : '';
+      return '<tr' + estilo + '>' +
+        '<td>' + chave + '</td>' +
+        '<td class="c">' + formatarNumeroBR(l.vencido) + '</td>' +
+        '<td class="c">' + formatarNumeroBR(l.a_vencer) + '</td>' +
+        '<td class="c">' + formatarNumeroBR(l.em_dia) + '</td>' +
+        '<td class="c">' + formatarNumeroBR(l.total) + '</td>' +
+        '<td class="c">' + l.atencao + '%</td>' +
+      '</tr>';
+    }
+
+    var html = linhas.map(function(l){ return linhaHtml(l.chave, l, false); }).join("");
+    html += linhaHtml("Total", totalGeral, true);
+    document.getElementById(tbodyId).innerHTML = html;
+  }
+
+  function renderResumo(){
+    renderResumoTabela("tbodyResumoJob", contarPorGrupo("Job"), false);
+    renderResumoTabela("tbodyResumoUF", contarPorGrupo("UF"), true);
+  }
+
   atualizarCards();
   initFiltros();
   initOrdenacao();
+  initTabs();
   render();
+  renderResumo();
   carregarRegistrosExistentes();
 })();
 </script>
