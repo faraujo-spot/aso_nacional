@@ -64,7 +64,7 @@ tr:last-child td{border-bottom:none}
   <div class="hdr-top">
     <div>
       <div class="hdr-title">ASO | Nacional</div>
-      <div class="hdr-sub">Controle de vencimento do ASO periódico — gerado em 09/09/2026 11:53</div>
+      <div class="hdr-sub">Controle de vencimento do ASO periódico — gerado em 09/09/2026 12:04</div>
     </div>
   </div>
 </div>
@@ -216,10 +216,9 @@ tr:last-child td{border-bottom:none}
     if (jaMarcadoAgora){
       return '<span class="tag-ok">&#10003; Registrado (' + jaMarcadoAgora + ')</span>';
     }
-    var hoje = new Date().toISOString().slice(0,10);
     return (
       '<div class="marc-row">' +
-        '<input type="date" value="' + hoje + '" id="data_' + d.CPF + '">' +
+        '<input type="date" id="data_' + d.CPF + '">' +
         '<button class="btn-marcar" onclick="window.__marcarAso(\'' + d.CPF + '\')">ASO feito</button>' +
       '</div>'
     );
@@ -251,8 +250,8 @@ tr:last-child td{border-bottom:none}
     var dado = DADOS.filter(function(d){ return String(d.CPF) === String(cpf); })[0];
     if (!dado) return;
     var input = document.getElementById("data_" + cpf);
-    var dataExame = input ? input.value : new Date().toISOString().slice(0,10);
-    if (!dataExame){ showToast("Escolha uma data válida.", true); return; }
+    var dataExame = input ? input.value : "";
+    if (!dataExame){ showToast("Escolha uma data antes de marcar como feito.", true); return; }
 
     if (!SYNC_URL || SYNC_URL.indexOf("COLE_AQUI") === 0){
       showToast("Sincronização ainda não configurada (SYNC_URL). Avise o responsável pelo painel.", true);
