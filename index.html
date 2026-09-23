@@ -81,7 +81,7 @@ tr:last-child td{border-bottom:none}
   <div class="hdr-top">
     <div>
       <div class="hdr-title">ASO | Nacional</div>
-      <div class="hdr-sub">Controle de vencimento do ASO periódico — gerado em 23/09/2026 11:04</div>
+      <div class="hdr-sub">Controle de vencimento do ASO periódico — gerado em 23/09/2026 11:15</div>
     </div>
     <span class="badge-consulta" id="badgeConsulta" hidden>Modo consulta — somente leitura</span>
   </div>
@@ -97,6 +97,14 @@ tr:last-child td{border-bottom:none}
     <div class="card"><div class="card-accent acc-or"></div><div class="card-lbl">A vencer</div><div class="card-num" id="cardAVencer">0</div></div>
     <div class="card"><div class="card-accent acc-gr"></div><div class="card-lbl">Em dia</div><div class="card-num" id="cardEmDia">0</div></div>
     <div class="card"><div class="card-accent acc-dk"></div><div class="card-lbl">Total ativos</div><div class="card-num" id="cardTotal">0</div></div>
+  </div>
+
+  <div class="sec-ttl" style="margin:14px 0 6px">Progresso do registro manual</div>
+  <div class="cards-grid">
+    <div class="card"><div class="card-accent acc-dk"></div><div class="card-lbl">Exame registrado</div><div class="card-num" id="cardExameManual">0</div></div>
+    <div class="card"><div class="card-accent acc-gr"></div><div class="card-lbl">Documento recebido</div><div class="card-num" id="cardDocRecebido">0</div></div>
+    <div class="card"><div class="card-accent acc-rd"></div><div class="card-lbl">Documento pendente</div><div class="card-num" id="cardDocPendente">0</div></div>
+    <div class="card"><div class="card-accent acc-or"></div><div class="card-lbl">Sem exame registrado</div><div class="card-num" id="cardSemExame">0</div></div>
   </div>
 
   <div class="two-col">
@@ -131,6 +139,21 @@ tr:last-child td{border-bottom:none}
       <div class="fg"><label>UF</label><select id="fUF"><option value="TODOS">Todas</option></select></div>
       <div class="fg"><label>Empresa</label><select id="fEmpresa"><option value="TODOS">Todas</option></select></div>
       <div class="fg"><label>Job</label><select id="fJob"><option value="TODOS">Todos</option></select></div>
+      <div class="fg"><label>Origem do vencimento</label>
+        <select id="fOrigem">
+          <option value="TODOS">Todas</option>
+          <option value="MANUAL">Exame registrado</option>
+          <option value="CLT_MKT">Admissão CLT/MKT</option>
+        </select>
+      </div>
+      <div class="fg"><label>Documento</label>
+        <select id="fDocumento">
+          <option value="TODOS">Todos</option>
+          <option value="RECEBIDO">Recebido</option>
+          <option value="PENDENTE">Pendente</option>
+          <option value="SEM_EXAME">Sem exame</option>
+        </select>
+      </div>
       <div class="fg"><label>Buscar (nome ou CPF)</label><input type="text" id="fBusca" placeholder="digite pra buscar"></div>
       <button class="btn-clear" id="btnClear">Limpar filtros</button>
     </div>
@@ -212,7 +235,7 @@ tr:last-child td{border-bottom:none}
   var LABEL_VAZIO = { fUF: "Todas", fEmpresa: "Todas", fJob: "Todos" };
 
   function initFiltros(){
-    ["fStatus","fUF","fEmpresa","fJob"].forEach(function(id){
+    ["fStatus","fUF","fEmpresa","fJob","fOrigem","fDocumento"].forEach(function(id){
       document.getElementById(id).addEventListener("change", render);
     });
     document.getElementById("fBusca").addEventListener("input", render);
@@ -221,9 +244,20 @@ tr:last-child td{border-bottom:none}
       document.getElementById("fUF").value = "TODOS";
       document.getElementById("fEmpresa").value = "TODOS";
       document.getElementById("fJob").value = "TODOS";
+      document.getElementById("fOrigem").value = "TODOS";
+      document.getElementById("fDocumento").value = "TODOS";
       document.getElementById("fBusca").value = "";
       render();
     });
+  }
+
+  // Estado do "documento" derivado do statusManual (fonte ao vivo, ver statusManual()), não do
+  // snapshot bruto d.Documento — quem não tem exame registrado cai em "SEM_EXAME", separado de
+  // "PENDENTE" (que só existe pra quem já tem data marcada mas ainda não mandou o documento).
+  function documentoEstado(d){
+    var m = statusManual(d);
+    if (!m) return "SEM_EXAME";
+    return m.documento === "Recebido" ? "RECEBIDO" : "PENDENTE";
   }
 
   function filtrar(ignorarCampo){
@@ -231,12 +265,20 @@ tr:last-child td{border-bottom:none}
     var uf = document.getElementById("fUF").value;
     var emp = document.getElementById("fEmpresa").value;
     var job = document.getElementById("fJob").value;
+    var origem = document.getElementById("fOrigem").value;
+    var docFiltro = document.getElementById("fDocumento").value;
     var busca = document.getElementById("fBusca").value.trim().toUpperCase();
     return DADOS.filter(function(d){
       if (ignorarCampo !== "Status" && st !== "TODOS" && d.Status !== st) return false;
       if (ignorarCampo !== "UF" && uf !== "TODOS" && d.UF !== uf) return false;
       if (ignorarCampo !== "Empresa" && emp !== "TODOS" && d.Empresa !== emp) return false;
       if (ignorarCampo !== "Job" && job !== "TODOS" && d.Job !== job) return false;
+      if (origem !== "TODOS"){
+        var isManual = !!statusManual(d);
+        if (origem === "MANUAL" && !isManual) return false;
+        if (origem === "CLT_MKT" && isManual) return false;
+      }
+      if (docFiltro !== "TODOS" && documentoEstado(d) !== docFiltro) return false;
       if (busca && d.Nome.toUpperCase().indexOf(busca) === -1 && String(d.CPF).indexOf(busca) === -1) return false;
       return true;
     });
@@ -271,6 +313,18 @@ tr:last-child td{border-bottom:none}
     document.getElementById("cardAVencer").textContent = formatarNumeroBR(aVencer);
     document.getElementById("cardEmDia").textContent = formatarNumeroBR(emDia);
     document.getElementById("cardTotal").textContent = formatarNumeroBR(DADOS.length);
+
+    var manual = 0, recebido = 0, pendente = 0, semExame = 0;
+    DADOS.forEach(function(d){
+      var estado = documentoEstado(d);
+      if (estado === "SEM_EXAME"){ semExame++; return; }
+      manual++;
+      if (estado === "RECEBIDO") recebido++; else pendente++;
+    });
+    document.getElementById("cardExameManual").textContent = formatarNumeroBR(manual);
+    document.getElementById("cardDocRecebido").textContent = formatarNumeroBR(recebido);
+    document.getElementById("cardDocPendente").textContent = formatarNumeroBR(pendente);
+    document.getElementById("cardSemExame").textContent = formatarNumeroBR(semExame);
   }
 
   function linhaAcao(d){
@@ -409,6 +463,7 @@ tr:last-child td{border-bottom:none}
     document.body.removeChild(form);
 
     marcadosNestaSessao[cpf] = {data: dataExame.split("-").reverse().join("/"), documento: "Pendente"};
+    atualizarCards();
     render();
     showToast("ASO de " + dado.Nome + " registrado (documento pendente). O status no painel atualiza no próximo processamento diário.");
   }
@@ -441,6 +496,7 @@ tr:last-child td{border-bottom:none}
 
     var atual = marcadosNestaSessao[cpf] || statusManual(dado || {CPF: cpf}) || {};
     marcadosNestaSessao[cpf] = {data: atual.data, documento: "Recebido"};
+    atualizarCards();
     render();
     showToast("Documento de " + nome + " marcado como recebido.");
   }
@@ -489,6 +545,7 @@ tr:last-child td{border-bottom:none}
           var documento = iDoc > -1 ? (linhas[i][iDoc] || "").trim() : "";
           if (cpf && dataIso) marcadosNestaSessao[cpf] = {data: formatarDataBR(dataIso), documento: documento || "Pendente"};
         }
+        atualizarCards();
         render();
       })
       .catch(function(){ /* silencioso — painel continua funcionando com o snapshot local */ });
